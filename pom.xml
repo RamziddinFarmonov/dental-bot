@@ -85,7 +85,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>com.example.BotMain</mainClass>  <!-- Bu yerga o'z main methodingiz bor classning to'liq nomini yozing, masalan: com.yourpackage.DentalBot -->
+                            <mainClass>com.example.dentalbot.Main</mainClass>  <!-- Bu yerga o'z main methodingiz bor classning to'liq nomini yozing, masalan: com.yourpackage.DentalBot -->
                         </manifest>
                     </archive>
                 </configuration>
@@ -98,7 +98,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.example.BotMain</mainClass>
+                            <mainClass>com.example.dentalbot.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
