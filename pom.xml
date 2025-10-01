@@ -75,4 +75,24 @@
         </dependency>
     </dependencies>
 
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>  <!-- Eng yangi versiyani oling -->
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <mainClass>com.example.BotMain</mainClass>  <!-- Bu yerga o'z main methodingiz bor classning to'liq nomini yozing, masalan: com.yourpackage.DentalBot -->
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+        </plugins>
+
+    </build>
+
+
 </project>
