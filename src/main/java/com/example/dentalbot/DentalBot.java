@@ -5,19 +5,14 @@ import com.example.dentalbot.db.ServiceRepository;
 import com.example.dentalbot.util.KeyboardFactory;
 import com.example.dentalbot.util.MarkdownUtil;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.ParseMode;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
-import org.telegram.telegrambots.meta.api.objects.Message;
-import org.telegram.telegrambots.meta.api.objects.Contact;
+import org.telegram.telegrambots.meta.api.objects.*;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -27,7 +22,6 @@ public class DentalBot extends TelegramLongPollingBot {
     private final AppointmentRepository appointmentRepo = new AppointmentRepository();
     private final ServiceRepository serviceRepo = new ServiceRepository();
     private final Map<Long, UserState> userStates = new HashMap<>();
-    private static final long ADMIN_CHAT_ID = 8135506421L;
 
     private static class UserState {
         String phone;
@@ -85,7 +79,13 @@ public class DentalBot extends TelegramLongPollingBot {
         String text = message.getText();
         UserState state = userStates.getOrDefault(chatId, new UserState());
 
-        if (chatId == ADMIN_CHAT_ID && state.adminStage != AdminStage.NONE) {
+        // YASHIRIN /my_id BUYRUG'I
+        if (text.equals("/my_id") || text.equals("/myid") || text.equals("/id")) {
+            sendHiddenChatId(chatId, message.getFrom());
+            return;
+        }
+
+        if (BotConfig.isAdmin(chatId) && state.adminStage != AdminStage.NONE) {
             handleAdminStage(chatId, text, state);
             return;
         }
@@ -100,14 +100,14 @@ public class DentalBot extends TelegramLongPollingBot {
                 showMainMenu(chatId);
                 break;
             case "/admin":
-                if (chatId == ADMIN_CHAT_ID) {
+                if (BotConfig.isAdmin(chatId)) {
                     showAdminMenu(chatId);
                 } else {
                     sendPlain(chatId, "❌ Bu buyruq faqat admin uchun!");
                 }
                 break;
             case "/stats":
-                if (chatId == ADMIN_CHAT_ID) {
+                if (BotConfig.isAdmin(chatId)) {
                     showStatistics(chatId);
                 }
                 break;
@@ -116,6 +116,27 @@ public class DentalBot extends TelegramLongPollingBot {
                 break;
             default:
                 sendPlain(chatId, "Noto'g'ri buyruq! /start orqali boshlang.");
+        }
+    }
+
+    private void sendHiddenChatId(long chatId, User from) {
+        String firstName = from.getFirstName() != null ? from.getFirstName() : "";
+        String lastName = from.getLastName() != null ? from.getLastName() : "";
+        String username = from.getUserName() != null ? "@" + from.getUserName() : "Yo'q";
+
+        String message = "👤 **Sizning ma'lumotlaringiz:**\n\n" +
+                "▫️ **Ism:** " + firstName + " " + lastName + "\n" +
+                "▫️ **Username:** " + username + "\n" +
+                "🆔 **Chat ID:** `" + chatId + "`\n\n" +
+                "_Bu xabar faqat sizga ko'rinadi_";
+
+        SendMessage sendMessage = new SendMessage(String.valueOf(chatId), message);
+        sendMessage.setParseMode(ParseMode.MARKDOWN);
+
+        try {
+            execute(sendMessage);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
         }
     }
 
@@ -229,7 +250,7 @@ public class DentalBot extends TelegramLongPollingBot {
 
         System.out.println("Callback received: " + data);
 
-        if (chatId == ADMIN_CHAT_ID) {
+        if (BotConfig.isAdmin(chatId)) {
             if (handleAdminCallback(chatId, data)) return;
         }
 
@@ -282,6 +303,10 @@ public class DentalBot extends TelegramLongPollingBot {
     }
 
     private boolean handleAdminCallback(long chatId, String data) throws TelegramApiException {
+        if (!BotConfig.isAdmin(chatId)) {
+            return false;
+        }
+
         UserState state = userStates.getOrDefault(chatId, new UserState());
 
         switch (data) {
