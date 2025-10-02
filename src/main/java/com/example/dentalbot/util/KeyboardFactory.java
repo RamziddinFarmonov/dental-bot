@@ -106,7 +106,8 @@ public class KeyboardFactory {
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         DateTimeFormatter displayFormatter = DateTimeFormatter.ofPattern("MM/dd EEE");
 
-        for (int i = 0; i < 7; i++) {
+        // 14 kun (2 hafta) uchun o'zgartirildi
+        for (int i = 0; i < 14; i++) {
             LocalDate date = today.plusDays(i);
             String displayDate = date.format(displayFormatter);
             rows.add(createButtonRow("📅 " + displayDate, "show_day_" + date.format(dateFormatter)));

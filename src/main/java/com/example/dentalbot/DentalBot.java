@@ -152,8 +152,9 @@ public class DentalBot extends TelegramLongPollingBot {
                     state.stage = Stage.NONE;
                     userStates.put(chatId, state);
 
+                    // Xabarni yangilang - 14 kun
                     SendMessage msg = new SendMessage(String.valueOf(chatId),
-                            "*📅 Navbat uchun kun tanlang \\(keyingi 7 kun\\)*:");
+                            "*📅 Navbat uchun kun tanlang \\(keyingi 14 kun\\)*:");
                     msg.enableMarkdownV2(true);
                     msg.setReplyMarkup(KeyboardFactory.createDaysKeyboard());
                     executeSilently(msg);
@@ -365,7 +366,7 @@ public class DentalBot extends TelegramLongPollingBot {
 
         SendMessage msg = new SendMessage(String.valueOf(chatId),
                 "📞 Navbatga yozilish uchun telefon raqamingizni kiriting:\n\n" +
-                        "Format: +998 XX XXX XX XX\n\n" +
+                        "Format: +998XXXXXXXXX\n\n" +
                         "Yoki quyidagi tugma orqali yuboring:");
         msg.setReplyMarkup(KeyboardFactory.createContactKeyboard());
         executeSilently(msg);
@@ -539,12 +540,7 @@ public class DentalBot extends TelegramLongPollingBot {
                     "🏥 *Ish joyi:* Urgut tumani, 5\\-kvartal\n" +
                     "📞 *Aloqa:* \\+998 90 123 45 67 \n\n" +
                     "⏰ *Ish vaqti:* 9:00 \\- 18:00 \n" +
-                    "📅 *Dam olish:* Yakshanba \n\n" +
-                    "💡 *Xizmatlar:* \n" +
-                    "• Tish oldirish \n" +
-                    "• Plomba qilish  \n" +
-                    "• Implantatsiya \n" +
-                    "• Maslahat";
+                    "📅 *Dam olish:* Yakshanba \n\n";
 
             SendMessage msg = new SendMessage(String.valueOf(chatId), info);
             msg.enableMarkdownV2(true);
