@@ -20,7 +20,6 @@ public class ServiceRepository {
             this.active = active;
         }
 
-        // Getters
         public int getId() { return id; }
         public String getName() { return name; }
         public int getPrice() { return price; }
@@ -118,28 +117,5 @@ public class ServiceRepository {
             e.printStackTrace();
             return false;
         }
-    }
-
-    public Service getServiceByName(String name) {
-        String sql = "SELECT * FROM services WHERE name = ? AND active = 1";
-
-        try (Connection conn = dbManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, name);
-            ResultSet rs = pstmt.executeQuery();
-
-            if (rs.next()) {
-                return new Service(
-                        rs.getInt("id"),
-                        rs.getString("name"),
-                        rs.getInt("price"),
-                        rs.getBoolean("active")
-                );
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 }

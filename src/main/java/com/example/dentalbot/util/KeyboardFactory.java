@@ -22,7 +22,6 @@ public class KeyboardFactory {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
 
-        // Xizmatlarni bazadan olish
         var services = serviceRepo.getAllServices();
         for (var service : services) {
             String callbackData = "service_" + service.getId();
@@ -30,12 +29,13 @@ public class KeyboardFactory {
             if (service.getPrice() > 0) {
                 buttonText += " (" + service.getPrice() + " so'm)";
             }
-            rows.add(List.of(createInlineButton(buttonText, callbackData)));
+            List<InlineKeyboardButton> row = new ArrayList<>();
+            row.add(createInlineButton(buttonText, callbackData));
+            rows.add(row);
         }
 
-        // Qo'shimcha tugmalar
-        rows.add(List.of(createInlineButton("📋 Mening navbatlarim", "my_appointments")));
-        rows.add(List.of(createInlineButton("👨‍⚕️ Stomatolog haqida", "doctor_menu")));
+        rows.add(createButtonRow("📋 Mening navbatlarim", "my_appointments"));
+        rows.add(createButtonRow("👨‍⚕️ Stomatolog haqida", "doctor_menu"));
 
         markup.setKeyboard(rows);
         return markup;
@@ -51,7 +51,8 @@ public class KeyboardFactory {
         contactButton.setRequestContact(true);
         row.add(contactButton);
 
-        List<KeyboardRow> keyboard = List.of(row);
+        List<KeyboardRow> keyboard = new ArrayList<>();
+        keyboard.add(row);
         markup.setKeyboard(keyboard);
 
         return markup;
@@ -61,10 +62,10 @@ public class KeyboardFactory {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
 
-        rows.add(List.of(createInlineButton("📊 Statistika", "admin_stats")));
-        rows.add(List.of(createInlineButton("🛠 Xizmatlarni boshqarish", "manage_services")));
-        rows.add(List.of(createInlineButton("📋 Barcha navbatlar", "all_appointments")));
-        rows.add(List.of(createInlineButton("🔙 Asosiy menyu", "main_menu")));
+        rows.add(createButtonRow("📊 Statistika", "admin_stats"));
+        rows.add(createButtonRow("🛠 Xizmatlarni boshqarish", "manage_services"));
+        rows.add(createButtonRow("📋 Barcha navbatlar", "all_appointments"));
+        rows.add(createButtonRow("🔙 Asosiy menyu", "main_menu"));
 
         markup.setKeyboard(rows);
         return markup;
@@ -74,9 +75,9 @@ public class KeyboardFactory {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
 
-        rows.add(List.of(createInlineButton("➕ Xizmat qo'shish", "add_service")));
-        rows.add(List.of(createInlineButton("✏️ Xizmatni tahrirlash", "edit_services")));
-        rows.add(List.of(createInlineButton("🔙 Admin menyu", "admin_menu")));
+        rows.add(createButtonRow("➕ Xizmat qo'shish", "add_service"));
+        rows.add(createButtonRow("✏️ Xizmatni tahrirlash", "edit_services"));
+        rows.add(createButtonRow("🔙 Admin menyu", "admin_menu"));
 
         markup.setKeyboard(rows);
         return markup;
@@ -89,10 +90,10 @@ public class KeyboardFactory {
         var services = serviceRepo.getAllServices();
         for (var service : services) {
             String buttonText = "✏️ " + service.getName() + " (" + service.getPrice() + " so'm)";
-            rows.add(List.of(createInlineButton(buttonText, "edit_service_" + service.getId())));
+            rows.add(createButtonRow(buttonText, "edit_service_" + service.getId()));
         }
 
-        rows.add(List.of(createInlineButton("🔙 Orqaga", "manage_services")));
+        rows.add(createButtonRow("🔙 Orqaga", "manage_services"));
         markup.setKeyboard(rows);
         return markup;
     }
@@ -108,7 +109,7 @@ public class KeyboardFactory {
         for (int i = 0; i < 7; i++) {
             LocalDate date = today.plusDays(i);
             String displayDate = date.format(displayFormatter);
-            rows.add(List.of(createInlineButton("📅 " + displayDate, "show_day_" + date.format(dateFormatter))));
+            rows.add(createButtonRow("📅 " + displayDate, "show_day_" + date.format(dateFormatter)));
         }
 
         markup.setKeyboard(rows);
@@ -132,14 +133,16 @@ public class KeyboardFactory {
                     row.add(createInlineButton("⏰ " + slot.format(timeFormatter), "select_time_" + slotStr));
                 }
             }
-            if (!row.isEmpty()) rows.add(row);
+            if (!row.isEmpty()) {
+                rows.add(row);
+            }
         }
 
         if (rows.isEmpty()) {
-            rows.add(List.of(createInlineButton("❌ Bu kunda bo'sh vaqt yo'q", "no_time")));
+            rows.add(createButtonRow("❌ Bu kunda bo'sh vaqt yo'q", "no_time"));
         }
 
-        rows.add(List.of(createInlineButton("🔙 Kunni o'zgartirish", "change_day")));
+        rows.add(createButtonRow("🔙 Kunni o'zgartirish", "change_day"));
         markup.setKeyboard(rows);
         return markup;
     }
@@ -148,31 +151,46 @@ public class KeyboardFactory {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
 
-        rows.add(List.of(
-                createInlineButton("✅ Tasdiqlash", "confirm_time_" + time),
-                createInlineButton("❌ Bekor qilish", "reject_time")
-        ));
+        List<InlineKeyboardButton> confirmRow = new ArrayList<>();
+        confirmRow.add(createInlineButton("✅ Tasdiqlash", "confirm_time_" + time));
+        confirmRow.add(createInlineButton("❌ Bekor qilish", "reject_time"));
+        rows.add(confirmRow);
 
-        rows.add(List.of(createInlineButton("🔄 Boshqa vaqt", "change_time")));
+        rows.add(createButtonRow("🔄 Boshqa vaqt", "change_time"));
         markup.setKeyboard(rows);
         return markup;
     }
 
     public static InlineKeyboardMarkup createServiceKeyboard(int serviceId) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
 
-        List<InlineKeyboardButton> row = new ArrayList<>();
-        row.add(createInlineButton("✅ Navbatga yozilish", "queue_register_" + serviceId));
-        row.add(createInlineButton("🔄 Boshqa xizmat", "change_service"));
+        var service = serviceRepo.getServiceById(serviceId);
+        if (service != null && service.getName().equals("Maslahat olish")) {
+            rows.add(createButtonRow("🔙 Asosiy menyu", "main_menu"));
+        } else {
+            List<InlineKeyboardButton> row = new ArrayList<>();
+            row.add(createInlineButton("✅ Navbatga yozilish", "queue_register_" + serviceId));
+            row.add(createInlineButton("🔄 Boshqa xizmat", "change_service"));
+            rows.add(row);
+        }
 
-        markup.setKeyboard(List.of(row));
+        markup.setKeyboard(rows);
         return markup;
     }
 
     public static InlineKeyboardMarkup createBackToMainKeyboard() {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
-        markup.setKeyboard(List.of(List.of(createInlineButton("🔙 Asosiy menyu", "main_menu"))));
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+        rows.add(createButtonRow("🔙 Asosiy menyu", "main_menu"));
+        markup.setKeyboard(rows);
         return markup;
+    }
+
+    private static List<InlineKeyboardButton> createButtonRow(String text, String callback) {
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        row.add(createInlineButton(text, callback));
+        return row;
     }
 
     private static InlineKeyboardButton createInlineButton(String text, String callback) {

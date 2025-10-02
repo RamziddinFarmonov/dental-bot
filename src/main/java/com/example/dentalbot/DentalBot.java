@@ -40,7 +40,7 @@ public class DentalBot extends TelegramLongPollingBot {
     }
 
     private enum Stage {
-        NONE, WAITING_PHONE, WAITING_FULLNAME, WAITING_SERVICE_NAME, WAITING_SERVICE_PRICE
+        NONE, WAITING_PHONE, WAITING_FULLNAME
     }
 
     private enum AdminStage {
@@ -85,34 +85,37 @@ public class DentalBot extends TelegramLongPollingBot {
         String text = message.getText();
         UserState state = userStates.getOrDefault(chatId, new UserState());
 
-        // Admin staging ni tekshirish
         if (chatId == ADMIN_CHAT_ID && state.adminStage != AdminStage.NONE) {
             handleAdminStage(chatId, text, state);
             return;
         }
 
-        // User staging ni tekshirish
         if (state.stage != Stage.NONE) {
             handleUserStage(chatId, text, state);
             return;
         }
 
-        // Asosiy komandalar
         switch (text) {
-            case "/start" -> showMainMenu(chatId);
-            case "/admin" -> {
+            case "/start":
+                showMainMenu(chatId);
+                break;
+            case "/admin":
                 if (chatId == ADMIN_CHAT_ID) {
                     showAdminMenu(chatId);
                 } else {
                     sendPlain(chatId, "❌ Bu buyruq faqat admin uchun!");
                 }
-            }
-            case "/stats" -> {
+                break;
+            case "/stats":
                 if (chatId == ADMIN_CHAT_ID) {
                     showStatistics(chatId);
                 }
-            }
-            default -> sendPlain(chatId, "Noto'g'ri buyruq! /start orqali boshlang.");
+                break;
+            case "/my_appointments":
+                showUserAppointments(chatId);
+                break;
+            default:
+                sendPlain(chatId, "Noto'g'ri buyruq! /start orqali boshlang.");
         }
     }
 
@@ -133,7 +136,7 @@ public class DentalBot extends TelegramLongPollingBot {
 
     private void handleUserStage(long chatId, String text, UserState state) {
         switch (state.stage) {
-            case WAITING_PHONE -> {
+            case WAITING_PHONE:
                 if (isValidPhone(text)) {
                     state.phone = text.trim();
                     state.stage = Stage.WAITING_FULLNAME;
@@ -142,14 +145,13 @@ public class DentalBot extends TelegramLongPollingBot {
                 } else {
                     sendPlain(chatId, "❌ Noto'g'ri format! +998 XX XXX XX XX shaklida kiriting yoki telefon raqamingizni yuborish tugmasidan foydalaning.");
                 }
-            }
-            case WAITING_FULLNAME -> {
+                break;
+            case WAITING_FULLNAME:
                 if (text.trim().length() >= 5) {
                     state.fullname = text.trim();
                     state.stage = Stage.NONE;
                     userStates.put(chatId, state);
 
-                    // Kunlarni tanlash menyusini ko'rsatish
                     SendMessage msg = new SendMessage(String.valueOf(chatId),
                             "*📅 Navbat uchun kun tanlang \\(keyingi 7 kun\\)*:");
                     msg.enableMarkdownV2(true);
@@ -158,19 +160,19 @@ public class DentalBot extends TelegramLongPollingBot {
                 } else {
                     sendPlain(chatId, "❌ Ism va familiya kamida 5 harfdan iborat bo'lishi kerak. Qaytadan kiriting:");
                 }
-            }
+                break;
         }
     }
 
     private void handleAdminStage(long chatId, String text, UserState state) {
         switch (state.adminStage) {
-            case WAITING_SERVICE_NAME -> {
+            case WAITING_SERVICE_NAME:
                 state.tempData = text.trim();
                 state.adminStage = AdminStage.WAITING_SERVICE_PRICE;
                 userStates.put(chatId, state);
                 sendPlain(chatId, "✅ Xizmat nomi qabul qilindi.\n\nEndi xizmat narxini kiriting (so'mda, faqat raqam):");
-            }
-            case WAITING_SERVICE_PRICE -> {
+                break;
+            case WAITING_SERVICE_PRICE:
                 try {
                     int price = Integer.parseInt(text.trim());
                     String serviceName = state.tempData;
@@ -191,8 +193,8 @@ public class DentalBot extends TelegramLongPollingBot {
                 } catch (TelegramApiException e) {
                     throw new RuntimeException(e);
                 }
-            }
-            case WAITING_EDIT_SERVICE_PRICE -> {
+                break;
+            case WAITING_EDIT_SERVICE_PRICE:
                 try {
                     int newPrice = Integer.parseInt(text.trim());
                     int serviceId = Integer.parseInt(state.tempData);
@@ -214,7 +216,7 @@ public class DentalBot extends TelegramLongPollingBot {
                 } catch (TelegramApiException e) {
                     throw new RuntimeException(e);
                 }
-            }
+                break;
         }
     }
 
@@ -224,85 +226,98 @@ public class DentalBot extends TelegramLongPollingBot {
 
         if (data == null) return;
 
-        // Admin callbacklar
+        System.out.println("Callback received: " + data);
+
         if (chatId == ADMIN_CHAT_ID) {
             if (handleAdminCallback(chatId, data)) return;
         }
 
-        // User callbacklari
-        if (data.equals("main_menu")) {
-            showMainMenu(chatId);
-        } else if (data.startsWith("service_")) {
-            int serviceId = Integer.parseInt(data.substring("service_".length()));
-            handleServiceSelection(chatId, serviceId);
-        } else if (data.startsWith("queue_register_")) {
-            int serviceId = Integer.parseInt(data.substring("queue_register_".length()));
-            startQueueRegistration(chatId, serviceId);
-        } else if (data.equals("change_service")) {
-            showMainMenu(chatId);
-        } else if (data.startsWith("show_day_")) {
-            String date = data.substring("show_day_".length());
-            showTimesForDay(chatId, date);
-        } else if (data.startsWith("select_time_")) {
-            String time = data.substring("select_time_".length());
-            handleTimeSelection(chatId, time);
-        } else if (data.startsWith("confirm_time_")) {
-            String time = data.substring("confirm_time_".length());
-            confirmAppointment(chatId, time);
-        } else if (data.equals("reject_time")) {
-            sendPlain(chatId, "✅ Navbat band qilish bekor qilindi.");
-            showMainMenu(chatId);
-        } else if (data.equals("change_time") || data.equals("change_day")) {
-            SendMessage msg = new SendMessage(String.valueOf(chatId),
-                    "*📅 Navbat uchun kun tanlang \\(keyingi 7 kun\\)*:");
-            msg.enableMarkdownV2(true);
-            msg.setReplyMarkup(KeyboardFactory.createDaysKeyboard());
-            executeSilently(msg);
-        } else if (data.equals("my_appointments")) {
-            showUserAppointments(chatId);
-        } else if (data.startsWith("cancel_")) {
-            int appointmentId = Integer.parseInt(data.substring("cancel_".length()));
-            cancelAppointment(chatId, appointmentId);
-        } else if (data.equals("doctor_menu")) {
-            sendDoctorInfo(chatId);
+        switch (data) {
+            case "main_menu":
+                showMainMenu(chatId);
+                break;
+            case "doctor_menu":
+                sendDoctorInfo(chatId);
+                break;
+            case "my_appointments":
+                showUserAppointments(chatId);
+                break;
+            case "change_service":
+                showMainMenu(chatId);
+                break;
+            case "reject_time":
+                sendPlain(chatId, "✅ Navbat band qilish bekor qilindi.");
+                showMainMenu(chatId);
+                break;
+            case "change_time":
+            case "change_day":
+                SendMessage msg = new SendMessage(String.valueOf(chatId),
+                        "*📅 Navbat uchun kun tanlang \\(keyingi 7 kun\\)*:");
+                msg.enableMarkdownV2(true);
+                msg.setReplyMarkup(KeyboardFactory.createDaysKeyboard());
+                executeSilently(msg);
+                break;
+            default:
+                if (data.startsWith("service_")) {
+                    int serviceId = Integer.parseInt(data.substring("service_".length()));
+                    handleServiceSelection(chatId, serviceId);
+                } else if (data.startsWith("queue_register_")) {
+                    int serviceId = Integer.parseInt(data.substring("queue_register_".length()));
+                    startQueueRegistration(chatId, serviceId);
+                } else if (data.startsWith("show_day_")) {
+                    String date = data.substring("show_day_".length());
+                    showTimesForDay(chatId, date);
+                } else if (data.startsWith("select_time_")) {
+                    String time = data.substring("select_time_".length());
+                    handleTimeSelection(chatId, time);
+                } else if (data.startsWith("confirm_time_")) {
+                    String time = data.substring("confirm_time_".length());
+                    confirmAppointment(chatId, time);
+                } else if (data.startsWith("cancel_")) {
+                    int appointmentId = Integer.parseInt(data.substring("cancel_".length()));
+                    cancelAppointment(chatId, appointmentId);
+                }
         }
     }
 
     private boolean handleAdminCallback(long chatId, String data) throws TelegramApiException {
         UserState state = userStates.getOrDefault(chatId, new UserState());
 
-        if (data.equals("admin_menu")) {
-            showAdminMenu(chatId);
-            return true;
-        } else if (data.equals("admin_stats")) {
-            showStatistics(chatId);
-            return true;
-        } else if (data.equals("manage_services")) {
-            showServiceManagementMenu(chatId);
-            return true;
-        } else if (data.equals("add_service")) {
-            state.adminStage = AdminStage.WAITING_SERVICE_NAME;
-            userStates.put(chatId, state);
-            sendPlain(chatId, "Yangi xizmat nomini kiriting:");
-            return true;
-        } else if (data.equals("edit_services")) {
-            showServicesForEdit(chatId);
-            return true;
-        } else if (data.startsWith("edit_service_")) {
-            int serviceId = Integer.parseInt(data.substring("edit_service_".length()));
-            state.adminStage = AdminStage.WAITING_EDIT_SERVICE_PRICE;
-            state.tempData = String.valueOf(serviceId);
-            userStates.put(chatId, state);
+        switch (data) {
+            case "admin_menu":
+                showAdminMenu(chatId);
+                return true;
+            case "admin_stats":
+                showStatistics(chatId);
+                return true;
+            case "manage_services":
+                showServiceManagementMenu(chatId);
+                return true;
+            case "add_service":
+                state.adminStage = AdminStage.WAITING_SERVICE_NAME;
+                userStates.put(chatId, state);
+                sendPlain(chatId, "Yangi xizmat nomini kiriting:");
+                return true;
+            case "edit_services":
+                showServicesForEdit(chatId);
+                return true;
+            case "all_appointments":
+                String appointments = appointmentRepo.getAllAppointments();
+                sendPlain(chatId, appointments.isEmpty() ? "Hozircha navbatlar yo'q." : appointments);
+                return true;
+            default:
+                if (data.startsWith("edit_service_")) {
+                    int serviceId = Integer.parseInt(data.substring("edit_service_".length()));
+                    state.adminStage = AdminStage.WAITING_EDIT_SERVICE_PRICE;
+                    state.tempData = String.valueOf(serviceId);
+                    userStates.put(chatId, state);
 
-            var service = serviceRepo.getServiceById(serviceId);
-            if (service != null) {
-                sendPlain(chatId, "Xizmat: " + service.getName() + "\nJoriy narx: " + service.getPrice() + " so'm\n\nYangi narxni kiriting:");
-            }
-            return true;
-        } else if (data.equals("all_appointments")) {
-            String appointments = appointmentRepo.getAllAppointments();
-            sendPlain(chatId, appointments.isEmpty() ? "Hozircha navbatlar yo'q." : appointments);
-            return true;
+                    var service = serviceRepo.getServiceById(serviceId);
+                    if (service != null) {
+                        sendPlain(chatId, "Xizmat: " + service.getName() + "\nJoriy narx: " + service.getPrice() + " so'm\n\nYangi narxni kiriting:");
+                    }
+                    return true;
+                }
         }
         return false;
     }
@@ -314,11 +329,26 @@ public class DentalBot extends TelegramLongPollingBot {
             return;
         }
 
+        if (service.getName().equals("Maslahat olish")) {
+            String text = "ℹ️ *Maslahat olish*\n\n" +
+                    "Maslahat olish bepul va navbatlarsiz\n" +
+                    "Vaqt topib shifokor huzuriga o'tishingiz mumkin\\. \n\n" +
+                    "📍 *Manzil:* Samarqand, Urgut tuman, Qora tepa \n" +
+                    "📞 *Telefon:* \\+998 90 123 45 67 \n" +
+                    "⏰ *Ish vaqti:* 9:00 \\- 18:00";
+
+            SendMessage message = new SendMessage(String.valueOf(chatId), text);
+            message.enableMarkdownV2(true);
+            message.setReplyMarkup(KeyboardFactory.createBackToMainKeyboard());
+            executeSilently(message);
+            return;
+        }
+
         String text;
         if (service.getPrice() == 0) {
-            text = "*" + MarkdownUtil.escapeMarkdownV2(service.getName()) + "*\n\nBepul maslahat xizmati";
+            text = "*" + MarkdownUtil.escapeMarkdownV2(service.getName()) + "*";
         } else {
-            text = "*" + MarkdownUtil.escapeMarkdownV2(service.getName()) + "*\nNarxi: " + service.getPrice() + " so'm";
+            text = "*" + MarkdownUtil.escapeMarkdownV2(service.getName()) + "*\\nNarxi: " + service.getPrice() + " so'm";
         }
 
         SendMessage message = new SendMessage(String.valueOf(chatId), text);
@@ -333,7 +363,6 @@ public class DentalBot extends TelegramLongPollingBot {
         state.stage = Stage.WAITING_PHONE;
         userStates.put(chatId, state);
 
-        // Telefon raqamini so'rash yoki contact so'rash
         SendMessage msg = new SendMessage(String.valueOf(chatId),
                 "📞 Navbatga yozilish uchun telefon raqamingizni kiriting:\n\n" +
                         "Format: +998 XX XXX XX XX\n\n" +
@@ -362,7 +391,7 @@ public class DentalBot extends TelegramLongPollingBot {
         userStates.put(chatId, state);
 
         SendMessage msg = new SendMessage(String.valueOf(chatId),
-                "❓ Navbatni tasdiqlaysizmi?\n\n" +
+                "❓ Navbatni tasdiqlaysizmi? \n\n" +
                         "🕒 Vaqt: " + time + "\n" +
                         "🛠 Xizmat: " + serviceRepo.getServiceById(state.serviceId).getName() + "\n\n" +
                         "Shu vaqtga yozilasizmi?");
@@ -378,7 +407,6 @@ public class DentalBot extends TelegramLongPollingBot {
         }
 
         if (appointmentRepo.isTimeBooked(time)) {
-            // Agar vaqt band bo'lsa, keyingi bo'sh vaqtni taklif qilish
             String nextTime = appointmentRepo.findNextAvailableTime(time);
             if (nextTime != null) {
                 sendPlain(chatId, "❌ Afsus, bu vaqt allaqachon band.\n\n" +
@@ -404,13 +432,13 @@ public class DentalBot extends TelegramLongPollingBot {
 
             var service = serviceRepo.getServiceById(state.serviceId);
             StringBuilder sb = new StringBuilder();
-            sb.append("✅ Navbatingiz muvaffaqiyatli saqlandi!\n\n");
+            sb.append("✅ Navbatingiz muvaffaqiyatli saqlandi! \n\n");
             sb.append("👤 Ism: ").append(state.fullname).append("\n");
             sb.append("📞 Telefon: ").append(state.phone).append("\n");
             sb.append("🛠 Xizmat: ").append(service.getName()).append("\n");
             sb.append("🕒 Vaqt: ").append(time).append("\n\n");
-            sb.append("📍 Manzil: Toshkent shahar, Yunusobod tumani\n");
-            sb.append("📞 Telefon: +998 90 123 45 67\n\n");
+            sb.append("📍 Manzil: Samarqand, Urgut tumani, Qora tepa \n");
+            sb.append("📞 Telefon: +998 90 123 45 67 \n\n");
             sb.append("⏰ Eslatmalar avtomatik yuboriladi.\n");
             sb.append("📋 /my_appointments - Navbatlaringizni ko'rish");
 
@@ -426,7 +454,6 @@ public class DentalBot extends TelegramLongPollingBot {
         String appointments = appointmentRepo.getUserAppointments(chatId);
         SendMessage msg = new SendMessage(String.valueOf(chatId), appointments);
 
-        // Bekor qilish tugmalarini qo'shish
         var appointmentsList = appointmentRepo.getUserAppointmentsList(chatId);
         if (!appointmentsList.isEmpty()) {
             var markup = new org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup();
@@ -441,7 +468,6 @@ public class DentalBot extends TelegramLongPollingBot {
                 rows.add(row);
             }
 
-            // Asosiy menyuga qaytish tugmasi
             var backRow = new ArrayList<org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton>();
             var backButton = new org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton();
             backButton.setText("🔙 Asosiy menyu");
@@ -493,7 +519,7 @@ public class DentalBot extends TelegramLongPollingBot {
         String stats = appointmentRepo.getServiceStatistics();
         int monthlyCount = appointmentRepo.getMonthlyAppointmentCount(2024, 1);
 
-        String message = "📊 **Statistika**\n\n" +
+        String message = "📊 **Statistika** \n\n" +
                 "📈 Oyilik navbatlar: " + monthlyCount + " ta\n\n" +
                 stats +
                 "\n━━━━━━━━━━━━━━━━━━━━\n" +
@@ -505,27 +531,31 @@ public class DentalBot extends TelegramLongPollingBot {
     }
 
     private void sendDoctorInfo(long chatId) {
-        String info = "👨‍⚕️ **Doktor Xujamov haqida**\n\n" +
-                "🎓 **Ta'lim:** Toshkent Tibbiyot Akademiyasi\n" +
-                "📅 **Tajriba:** 10+ yil\n" +
-                "🦷 **Mutaxassislik:** Stomatolog, implantolog\n" +
-                "🏥 **Ish joyi:** Yunusobod tumani, 5-kvartal\n" +
-                "📞 **Aloqa:** +998 90 123 45 67\n\n" +
-                "⏰ **Ish vaqti:** 9:00 - 18:00\n" +
-                "📅 **Dam olish:** Yakshanba\n\n" +
-                "💡 **Xizmatlar:**\n" +
-                "• Tish oldirish\n" +
-                "• Plomba qilish  \n" +
-                "• Implantatsiya\n" +
-                "• Maslahat";
+        try {
+            String info = "👨‍⚕️ *Doktor Xujamov haqida* \n\n" +
+                    "🎓 *Ta'lim:* Toshkent Tibbiyot Akademiyasi\n" +
+                    "📅 *Tajriba:* 10\\+ yil\n" +
+                    "🦷 *Mutaxassislik:* Stomatolog, implantolog\n" +
+                    "🏥 *Ish joyi:* Urgut tumani, 5\\-kvartal\n" +
+                    "📞 *Aloqa:* \\+998 90 123 45 67 \n\n" +
+                    "⏰ *Ish vaqti:* 9:00 \\- 18:00 \n" +
+                    "📅 *Dam olish:* Yakshanba \n\n" +
+                    "💡 *Xizmatlar:* \n" +
+                    "• Tish oldirish \n" +
+                    "• Plomba qilish  \n" +
+                    "• Implantatsiya \n" +
+                    "• Maslahat";
 
-        SendMessage msg = new SendMessage(String.valueOf(chatId), info);
-        msg.enableMarkdownV2(true);
-        msg.setReplyMarkup(KeyboardFactory.createBackToMainKeyboard());
-        executeSilently(msg);
+            SendMessage msg = new SendMessage(String.valueOf(chatId), info);
+            msg.enableMarkdownV2(true);
+            msg.setReplyMarkup(KeyboardFactory.createBackToMainKeyboard());
+            execute(msg);
+        } catch (Exception e) {
+            e.printStackTrace();
+            sendPlain(chatId, "❌ Ma'lumot yuborishda xatolik yuz berdi.");
+        }
     }
 
-    // Yordamchi methodlar
     private boolean isValidPhone(String phone) {
         Pattern pattern = Pattern.compile("^\\+998\\d{2}\\d{3}\\d{2}\\d{2}$");
         return pattern.matcher(phone).matches();

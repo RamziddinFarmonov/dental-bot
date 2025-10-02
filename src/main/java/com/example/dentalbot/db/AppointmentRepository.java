@@ -34,7 +34,6 @@ public class AppointmentRepository {
             this.appointmentTime = appointmentTime;
         }
 
-        // Getters
         public int getId() { return id; }
         public long getChatId() { return chatId; }
         public String getFullName() { return fullName; }
@@ -293,7 +292,6 @@ public class AppointmentRepository {
         }
     }
 
-    // Statistika uchun methodlar
     public int getMonthlyAppointmentCount(int year, int month) {
         String sql = "SELECT COUNT(*) FROM appointments WHERE strftime('%Y-%m', appointment_time) = ?";
 
