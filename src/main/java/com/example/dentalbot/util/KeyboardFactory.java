@@ -1,7 +1,11 @@
 package com.example.dentalbot.util;
 
+import com.example.dentalbot.db.ServiceRepository;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -12,25 +16,83 @@ import java.util.List;
 import java.util.function.Predicate;
 
 public class KeyboardFactory {
+    private static final ServiceRepository serviceRepo = new ServiceRepository();
 
     public static InlineKeyboardMarkup createMainMenu() {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
-        rows.add(List.of(button("🦷 Tish oldirish", "service_tooth_removal")));
-        rows.add(List.of(button("🔧 Plomba qilish", "service_filling")));
-        rows.add(List.of(button("💎 Tish qo‘ydirish", "service_implant")));
-        rows.add(List.of(button("🧑‍⚕️ Maslahat olish", "service_advice")));
-        rows.add(List.of(button("Mening navbatlarim", "my_appointments")));
-        rows.add(List.of(button("Stamatolog haqida", "doctor_menu")));
+
+        // Xizmatlarni bazadan olish
+        var services = serviceRepo.getAllServices();
+        for (var service : services) {
+            String callbackData = "service_" + service.getId();
+            String buttonText = "🦷 " + service.getName();
+            if (service.getPrice() > 0) {
+                buttonText += " (" + service.getPrice() + " so'm)";
+            }
+            rows.add(List.of(createInlineButton(buttonText, callbackData)));
+        }
+
+        // Qo'shimcha tugmalar
+        rows.add(List.of(createInlineButton("📋 Mening navbatlarim", "my_appointments")));
+        rows.add(List.of(createInlineButton("👨‍⚕️ Stomatolog haqida", "doctor_menu")));
+
         markup.setKeyboard(rows);
         return markup;
     }
 
-    public static InlineKeyboardMarkup createDoctorMenu() {
+    public static ReplyKeyboardMarkup createContactKeyboard() {
+        ReplyKeyboardMarkup markup = new ReplyKeyboardMarkup();
+        markup.setResizeKeyboard(true);
+        markup.setOneTimeKeyboard(true);
+
+        KeyboardRow row = new KeyboardRow();
+        KeyboardButton contactButton = new KeyboardButton("📞 Telefon raqamimni yuborish");
+        contactButton.setRequestContact(true);
+        row.add(contactButton);
+
+        List<KeyboardRow> keyboard = List.of(row);
+        markup.setKeyboard(keyboard);
+
+        return markup;
+    }
+
+    public static InlineKeyboardMarkup createAdminMenu() {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
-        rows.add(List.of(button("Shifokor haqida malumot olish", "doctor_info")));
-        rows.add(List.of(button("Barcha navbatlar ro'yxatini ko'rish", "all_appointments")));
+
+        rows.add(List.of(createInlineButton("📊 Statistika", "admin_stats")));
+        rows.add(List.of(createInlineButton("🛠 Xizmatlarni boshqarish", "manage_services")));
+        rows.add(List.of(createInlineButton("📋 Barcha navbatlar", "all_appointments")));
+        rows.add(List.of(createInlineButton("🔙 Asosiy menyu", "main_menu")));
+
+        markup.setKeyboard(rows);
+        return markup;
+    }
+
+    public static InlineKeyboardMarkup createServiceManagementMenu() {
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+
+        rows.add(List.of(createInlineButton("➕ Xizmat qo'shish", "add_service")));
+        rows.add(List.of(createInlineButton("✏️ Xizmatni tahrirlash", "edit_services")));
+        rows.add(List.of(createInlineButton("🔙 Admin menyu", "admin_menu")));
+
+        markup.setKeyboard(rows);
+        return markup;
+    }
+
+    public static InlineKeyboardMarkup createServicesListForEdit() {
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+
+        var services = serviceRepo.getAllServices();
+        for (var service : services) {
+            String buttonText = "✏️ " + service.getName() + " (" + service.getPrice() + " so'm)";
+            rows.add(List.of(createInlineButton(buttonText, "edit_service_" + service.getId())));
+        }
+
+        rows.add(List.of(createInlineButton("🔙 Orqaga", "manage_services")));
         markup.setKeyboard(rows);
         return markup;
     }
@@ -38,12 +100,17 @@ public class KeyboardFactory {
     public static InlineKeyboardMarkup createDaysKeyboard() {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+
         LocalDate today = LocalDate.now();
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        DateTimeFormatter displayFormatter = DateTimeFormatter.ofPattern("MM/dd EEE");
+
         for (int i = 0; i < 7; i++) {
             LocalDate date = today.plusDays(i);
-            rows.add(List.of(button("📅 " + date.format(dateFormatter), "show_day_" + date.format(dateFormatter))));
+            String displayDate = date.format(displayFormatter);
+            rows.add(List.of(createInlineButton("📅 " + displayDate, "show_day_" + date.format(dateFormatter))));
         }
+
         markup.setKeyboard(rows);
         return markup;
     }
@@ -51,20 +118,28 @@ public class KeyboardFactory {
     public static InlineKeyboardMarkup createTimesKeyboard(LocalDate date, Predicate<String> isBooked) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+
         for (int hour = 9; hour <= 18; hour++) {
             List<InlineKeyboardButton> row = new ArrayList<>();
             for (int minute = 0; minute < 60; minute += 30) {
                 LocalDateTime slot = LocalDateTime.of(date, LocalTime.of(hour, minute));
                 String slotStr = slot.format(formatter);
-                if (!isBooked.test(slotStr)) {
-                    row.add(button("⏰ " + slot.format(DateTimeFormatter.ofPattern("HH:mm")),
-                            "select_time_" + slotStr));
+
+                if (slot.isAfter(LocalDateTime.now()) && !isBooked.test(slotStr)) {
+                    row.add(createInlineButton("⏰ " + slot.format(timeFormatter), "select_time_" + slotStr));
                 }
             }
             if (!row.isEmpty()) rows.add(row);
         }
-        rows.add(List.of(button("🔙 Orqaga", "reject_time")));
+
+        if (rows.isEmpty()) {
+            rows.add(List.of(createInlineButton("❌ Bu kunda bo'sh vaqt yo'q", "no_time")));
+        }
+
+        rows.add(List.of(createInlineButton("🔙 Kunni o'zgartirish", "change_day")));
         markup.setKeyboard(rows);
         return markup;
     }
@@ -72,22 +147,38 @@ public class KeyboardFactory {
     public static InlineKeyboardMarkup createConfirmationKeyboard(String time) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
-        rows.add(List.of(button("✅ Ha", "confirm_time_" + time)));
-        rows.add(List.of(button("❌ Yo'q", "reject_time")));
+
+        rows.add(List.of(
+                createInlineButton("✅ Tasdiqlash", "confirm_time_" + time),
+                createInlineButton("❌ Bekor qilish", "reject_time")
+        ));
+
+        rows.add(List.of(createInlineButton("🔄 Boshqa vaqt", "change_time")));
         markup.setKeyboard(rows);
         return markup;
     }
 
-    public static InlineKeyboardMarkup createServiceKeyboard() {
+    public static InlineKeyboardMarkup createServiceKeyboard(int serviceId) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
-        markup.setKeyboard(List.of(List.of(button("✅ Navbatga yozilish", "queue_register"))));
+
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        row.add(createInlineButton("✅ Navbatga yozilish", "queue_register_" + serviceId));
+        row.add(createInlineButton("🔄 Boshqa xizmat", "change_service"));
+
+        markup.setKeyboard(List.of(row));
         return markup;
     }
 
-    private static InlineKeyboardButton button(String text, String callback) {
-        InlineKeyboardButton b = new InlineKeyboardButton();
-        b.setText(text);
-        b.setCallbackData(callback);
-        return b;
+    public static InlineKeyboardMarkup createBackToMainKeyboard() {
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        markup.setKeyboard(List.of(List.of(createInlineButton("🔙 Asosiy menyu", "main_menu"))));
+        return markup;
+    }
+
+    private static InlineKeyboardButton createInlineButton(String text, String callback) {
+        InlineKeyboardButton button = new InlineKeyboardButton();
+        button.setText(text);
+        button.setCallbackData(callback);
+        return button;
     }
 }
