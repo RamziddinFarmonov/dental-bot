@@ -392,7 +392,7 @@ public class DentalBot extends TelegramLongPollingBot {
                     "Vaqt topib shifokor huzuriga o'tishingiz mumkin\\. \n\n" +
                     "📍 *Manzil:* Samarqand, Urgut tuman, Qora tepa \n" +
                     "📞 *Telefon:* \\+998 91 034 33 55\n" +
-                    "⏰ *Ish vaqti:* 9:00 \\- 18:00";
+                    "⏰ *Ish vaqti:* 8:00 \\- 19:00";
 
             SendMessage message = new SendMessage(String.valueOf(chatId), text);
             message.enableMarkdownV2(true);
@@ -602,7 +602,7 @@ public class DentalBot extends TelegramLongPollingBot {
                     "🦷 *Mutaxassislik:* Stomatolog\n" +
                     "🏥 *Ish joyi:* Samarqand, Urgut tumani, Qora tepa\n" +
                     "📞 *Aloqa:* \\+998 91 034 33 55 \n\n" +
-                    "⏰ *Ish vaqti:* 9:00 \\- 18:00 \n" +
+                    "⏰ *Ish vaqti:* 8:00 \\- 19:00 \n" +
                     "📅 *Dam olish:* Yakshanba \n\n";
 
             SendMessage msg = new SendMessage(String.valueOf(chatId), info);

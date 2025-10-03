@@ -241,14 +241,14 @@ public class AppointmentRepository {
             e.printStackTrace();
         }
     }
-
     public String findNextAvailableTime(String preferredTime) {
         LocalDateTime preferred = LocalDateTime.parse(preferredTime,
                 DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
 
         // Keyingi 2 kun ichida bo'sh vaqt qidirish
         for (int day = 0; day < 2; day++) {
-            for (int hour = 9; hour <= 18; hour++) {
+            // YANGI: 8:00 dan 19:00 gacha
+            for (int hour = 8; hour <= 19; hour++) {
                 for (int minute = 0; minute < 60; minute += 30) {
                     LocalDateTime slot = preferred.plusDays(day)
                             .withHour(hour)
@@ -267,6 +267,7 @@ public class AppointmentRepository {
         }
         return null;
     }
+
 
     private void updateReminderSent(int id, String column, boolean value) {
         String sql = "UPDATE appointments SET " + column + " = ? WHERE id = ?";

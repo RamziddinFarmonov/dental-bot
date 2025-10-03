@@ -123,7 +123,8 @@ public class KeyboardFactory {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
-        for (int hour = 9; hour <= 18; hour++) {
+        // YANGI: 8:00 dan 19:00 gacha
+        for (int hour = 8; hour <= 18; hour++) {
             List<InlineKeyboardButton> row = new ArrayList<>();
             for (int minute = 0; minute < 60; minute += 30) {
                 LocalDateTime slot = LocalDateTime.of(date, LocalTime.of(hour, minute));
@@ -241,8 +242,8 @@ public class KeyboardFactory {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
-        // 30 daqiqa interval bilan
-        for (int hour = 9; hour <= 18; hour++) {
+        // YANGI: 8:00 dan 19:00 gacha
+        for (int hour = 8; hour <= 19; hour++) {
             List<InlineKeyboardButton> row = new ArrayList<>();
             for (int minute = 0; minute < 60; minute += 30) {
                 LocalDateTime slot = LocalDateTime.of(date, LocalTime.of(hour, minute));
