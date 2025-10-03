@@ -596,9 +596,9 @@ public class DentalBot extends TelegramLongPollingBot {
 
     private void sendDoctorInfo(long chatId) {
         try {
-            String info = "👨‍⚕️ *Doktor Xujamov haqida* \n\n" +
-                    "🎓 *Ta'lim:* Toshkent Tibbiyot Akademiyasi\n" +
-                    "📅 *Tajriba:* 10\\+ yil\n" +
+            String info = "👨‍⚕️ *Doktor Xujamov Shaxzod* \n\n" +
+                    "🎓 *Ta'lim:* Kiev Xalqaro tibbiyot universiteti va Samarqand Davlat Tibbiyot universiteti\n" +
+                    "📅 *Tajriba:* 7\\+ yil\n" +
                     "🦷 *Mutaxassislik:* Stomatolog\n" +
                     "🏥 *Ish joyi:* Samarqand, Urgut tumani, Qora tepa\n" +
                     "📞 *Aloqa:* \\+998 91 034 33 55 \n\n" +
