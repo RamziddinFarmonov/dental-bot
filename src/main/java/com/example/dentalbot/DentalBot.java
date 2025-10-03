@@ -38,7 +38,8 @@ public class DentalBot extends TelegramLongPollingBot {
     }
 
     private enum AdminStage {
-        NONE, WAITING_SERVICE_NAME, WAITING_SERVICE_PRICE, WAITING_EDIT_SERVICE_PRICE
+        NONE, WAITING_SERVICE_NAME, WAITING_SERVICE_MIN_PRICE, WAITING_SERVICE_MAX_PRICE,
+        WAITING_EDIT_SERVICE_MIN_PRICE, WAITING_EDIT_SERVICE_MAX_PRICE
     }
 
     public DentalBot() {
@@ -190,17 +191,32 @@ public class DentalBot extends TelegramLongPollingBot {
         switch (state.adminStage) {
             case WAITING_SERVICE_NAME:
                 state.tempData = text.trim();
-                state.adminStage = AdminStage.WAITING_SERVICE_PRICE;
+                state.adminStage = AdminStage.WAITING_SERVICE_MIN_PRICE;
                 userStates.put(chatId, state);
-                sendPlain(chatId, "✅ Xizmat nomi qabul qilindi.\n\nEndi xizmat narxini kiriting (so'mda, faqat raqam):");
+                sendPlain(chatId, "✅ Xizmat nomi qabul qilindi.\n\nEndi xizmatning MINIMAL narxini kiriting (so'mda, faqat raqam):");
                 break;
-            case WAITING_SERVICE_PRICE:
-                try {
-                    int price = Integer.parseInt(text.trim());
-                    String serviceName = state.tempData;
 
-                    if (serviceRepo.addService(serviceName, price)) {
-                        sendPlain(chatId, "✅ Xizmat muvaffaqiyatli qo'shildi: " + serviceName + " - " + price + " so'm");
+            case WAITING_SERVICE_MIN_PRICE:
+                try {
+                    int minPrice = Integer.parseInt(text.trim());
+                    state.tempData = state.tempData + "|" + minPrice; // name|minPrice formatida
+                    state.adminStage = AdminStage.WAITING_SERVICE_MAX_PRICE;
+                    userStates.put(chatId, state);
+                    sendPlain(chatId, "✅ Minimal narx qabul qilindi.\n\nEndi xizmatning MAKSIMAL narxini kiriting (so'mda, faqat raqam):");
+                } catch (NumberFormatException e) {
+                    sendPlain(chatId, "❌ Noto'g'ri narx formati! Faqat raqam kiriting:");
+                }
+                break;
+
+            case WAITING_SERVICE_MAX_PRICE:
+                try {
+                    int maxPrice = Integer.parseInt(text.trim());
+                    String[] parts = state.tempData.split("\\|");
+                    String serviceName = parts[0];
+                    int minPrice = Integer.parseInt(parts[1]);
+
+                    if (serviceRepo.addService(serviceName, minPrice, maxPrice)) {
+                        sendPlain(chatId, "✅ Xizmat muvaffaqiyatli qo'shildi: " + serviceName + " - " + minPrice + " - " + maxPrice + " so'm");
                     } else {
                         sendPlain(chatId, "❌ Xizmat qo'shishda xatolik!");
                     }
@@ -216,14 +232,29 @@ public class DentalBot extends TelegramLongPollingBot {
                     throw new RuntimeException(e);
                 }
                 break;
-            case WAITING_EDIT_SERVICE_PRICE:
+
+            case WAITING_EDIT_SERVICE_MIN_PRICE:
                 try {
-                    int newPrice = Integer.parseInt(text.trim());
-                    int serviceId = Integer.parseInt(state.tempData);
+                    int minPrice = Integer.parseInt(text.trim());
+                    state.tempData = state.tempData + "|" + minPrice; // serviceId|minPrice formatida
+                    state.adminStage = AdminStage.WAITING_EDIT_SERVICE_MAX_PRICE;
+                    userStates.put(chatId, state);
+                    sendPlain(chatId, "✅ Minimal narx qabul qilindi.\n\nEndi MAKSIMAL narxni kiriting:");
+                } catch (NumberFormatException e) {
+                    sendPlain(chatId, "❌ Noto'g'ri narx formati! Faqat raqam kiriting:");
+                }
+                break;
+
+            case WAITING_EDIT_SERVICE_MAX_PRICE:
+                try {
+                    int maxPrice = Integer.parseInt(text.trim());
+                    String[] parts = state.tempData.split("\\|");
+                    int serviceId = Integer.parseInt(parts[0]);
+                    int minPrice = Integer.parseInt(parts[1]);
 
                     var service = serviceRepo.getServiceById(serviceId);
-                    if (service != null && serviceRepo.updateService(serviceId, service.getName(), newPrice)) {
-                        sendPlain(chatId, "✅ Xizmat narxi yangilandi: " + service.getName() + " - " + newPrice + " so'm");
+                    if (service != null && serviceRepo.updateService(serviceId, service.getName(), minPrice, maxPrice)) {
+                        sendPlain(chatId, "✅ Xizmat narxi yangilandi: " + service.getName() + " - " + minPrice + " - " + maxPrice + " so'm");
                     } else {
                         sendPlain(chatId, "❌ Xizmat yangilashda xatolik!");
                     }
@@ -274,7 +305,7 @@ public class DentalBot extends TelegramLongPollingBot {
             case "change_time":
             case "change_day":
                 SendMessage msg = new SendMessage(String.valueOf(chatId),
-                        "*📅 Navbat uchun kun tanlang \\(keyingi 7 kun\\)*:");
+                        "*📅 Navbat uchun kun tanlang \\(keyingi 14 kun\\)*:");
                 msg.enableMarkdownV2(true);
                 msg.setReplyMarkup(KeyboardFactory.createDaysKeyboard());
                 executeSilently(msg);
@@ -334,13 +365,13 @@ public class DentalBot extends TelegramLongPollingBot {
             default:
                 if (data.startsWith("edit_service_")) {
                     int serviceId = Integer.parseInt(data.substring("edit_service_".length()));
-                    state.adminStage = AdminStage.WAITING_EDIT_SERVICE_PRICE;
+                    state.adminStage = AdminStage.WAITING_EDIT_SERVICE_MIN_PRICE;
                     state.tempData = String.valueOf(serviceId);
                     userStates.put(chatId, state);
 
                     var service = serviceRepo.getServiceById(serviceId);
                     if (service != null) {
-                        sendPlain(chatId, "Xizmat: " + service.getName() + "\nJoriy narx: " + service.getPrice() + " so'm\n\nYangi narxni kiriting:");
+                        sendPlain(chatId, "Xizmat: " + service.getName() + "\nJoriy narx oralig'i: " + service.getPriceRange() + "\n\nYangi MINIMAL narxni kiriting:");
                     }
                     return true;
                 }
@@ -360,7 +391,7 @@ public class DentalBot extends TelegramLongPollingBot {
                     "Maslahat olish bepul va navbatlarsiz\n" +
                     "Vaqt topib shifokor huzuriga o'tishingiz mumkin\\. \n\n" +
                     "📍 *Manzil:* Samarqand, Urgut tuman, Qora tepa \n" +
-                    "📞 *Telefon:* \\+998 90 123 45 67 \n" +
+                    "📞 *Telefon:* \\+998 91 034 33 55\n" +
                     "⏰ *Ish vaqti:* 9:00 \\- 18:00";
 
             SendMessage message = new SendMessage(String.valueOf(chatId), text);
@@ -370,12 +401,12 @@ public class DentalBot extends TelegramLongPollingBot {
             return;
         }
 
-        String text;
-        if (service.getPrice() == 0) {
-            text = "*" + MarkdownUtil.escapeMarkdownV2(service.getName()) + "*";
-        } else {
-            text = "*" + MarkdownUtil.escapeMarkdownV2(service.getName()) + "*\\nNarxi: " + service.getPrice() + " so'm";
-        }
+        // XATOLIK TUZATILDI: - belgisini escape qilish
+        String priceRange = service.getPriceRange().replace("-", "\\-");
+
+        String text = "*" + MarkdownUtil.escapeMarkdownV2(service.getName()) + "*\n\n" +
+                "💰 Narxi: " + priceRange + "\n\n" +
+                "Xizmatni tanlashingiz mumkin:";
 
         SendMessage message = new SendMessage(String.valueOf(chatId), text);
         message.enableMarkdownV2(true);
@@ -399,9 +430,12 @@ public class DentalBot extends TelegramLongPollingBot {
 
     private void showTimesForDay(long chatId, String date) throws TelegramApiException {
         LocalDate localDate = LocalDate.parse(date);
+
+        // Oddiy tekst sifatida yuboramiz (Markdown ishlatmasdan)
+        String displayDate = date.replace("-", ".");
+
         SendMessage msg = new SendMessage(String.valueOf(chatId),
-                "*⏰ Bo'sh vaqtlar \\(" + MarkdownUtil.escapeMarkdownV2(date) + "\\)*:");
-        msg.enableMarkdownV2(true);
+                "⏰ Bo'sh vaqtlar (" + displayDate + "):");
         msg.setReplyMarkup(KeyboardFactory.createTimesKeyboard(localDate, appointmentRepo::isTimeBooked));
         executeSilently(msg);
     }
@@ -416,10 +450,13 @@ public class DentalBot extends TelegramLongPollingBot {
         state.selectedTime = time;
         userStates.put(chatId, state);
 
+        var service = serviceRepo.getServiceById(state.serviceId);
+        String serviceName = service != null ? service.getName() : "Noma'lum";
+
         SendMessage msg = new SendMessage(String.valueOf(chatId),
                 "❓ Navbatni tasdiqlaysizmi? \n\n" +
                         "🕒 Vaqt: " + time + "\n" +
-                        "🛠 Xizmat: " + serviceRepo.getServiceById(state.serviceId).getName() + "\n\n" +
+                        "🛠 Xizmat: " + serviceName + "\n\n" +
                         "Shu vaqtga yozilasizmi?");
         msg.setReplyMarkup(KeyboardFactory.createConfirmationKeyboard(time));
         executeSilently(msg);
@@ -462,6 +499,7 @@ public class DentalBot extends TelegramLongPollingBot {
             sb.append("👤 Ism: ").append(state.fullname).append("\n");
             sb.append("📞 Telefon: ").append(state.phone).append("\n");
             sb.append("🛠 Xizmat: ").append(service.getName()).append("\n");
+            sb.append("💰 Narx oralig'i: ").append(service.getPriceRange()).append("\n");
             sb.append("🕒 Vaqt: ").append(time).append("\n\n");
             sb.append("📍 Manzil: Samarqand, Urgut tumani, Qora tepa \n");
             sb.append("📞 Telefon: +998 90 123 45 67 \n\n");
@@ -561,9 +599,9 @@ public class DentalBot extends TelegramLongPollingBot {
             String info = "👨‍⚕️ *Doktor Xujamov haqida* \n\n" +
                     "🎓 *Ta'lim:* Toshkent Tibbiyot Akademiyasi\n" +
                     "📅 *Tajriba:* 10\\+ yil\n" +
-                    "🦷 *Mutaxassislik:* Stomatolog, implantolog\n" +
-                    "🏥 *Ish joyi:* Urgut tumani, 5\\-kvartal\n" +
-                    "📞 *Aloqa:* \\+998 90 123 45 67 \n\n" +
+                    "🦷 *Mutaxassislik:* Stomatolog\n" +
+                    "🏥 *Ish joyi:* Samarqand, Urgut tumani, Qora tepa\n" +
+                    "📞 *Aloqa:* \\+998 91 034 33 55 \n\n" +
                     "⏰ *Ish vaqti:* 9:00 \\- 18:00 \n" +
                     "📅 *Dam olish:* Yakshanba \n\n";
 

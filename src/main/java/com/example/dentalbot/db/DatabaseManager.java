@@ -24,19 +24,19 @@ public class DatabaseManager {
     public Connection getConnection() throws SQLException {
         return DriverManager.getConnection(DB_URL);
     }
-
     private void initDatabase() {
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement()) {
 
-            // Services jadvali
+            // Services jadvali - narx oralig'ini saqlash uchun
             stmt.execute("CREATE TABLE IF NOT EXISTS services (" +
                     "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                     "name TEXT UNIQUE NOT NULL, " +
-                    "price INTEGER NOT NULL, " +
+                    "min_price INTEGER NOT NULL, " +  // Yangi: minimum narx
+                    "max_price INTEGER NOT NULL, " +  // Yangi: maksimum narx
                     "active BOOLEAN DEFAULT 1)");
 
-            // Appointments jadvali
+            // Appointments jadvali (o'zgarmadi)
             stmt.execute("CREATE TABLE IF NOT EXISTS appointments (" +
                     "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                     "chat_id LONG NOT NULL, " +
@@ -56,20 +56,20 @@ public class DatabaseManager {
             e.printStackTrace();
         }
     }
-
     private void initDefaultServices(Connection conn) {
-        String sql = "INSERT OR IGNORE INTO services (name, price) VALUES (?, ?)";
+        String sql = "INSERT OR IGNORE INTO services (name, min_price, max_price) VALUES (?, ?, ?)";
         String[][] defaultServices = {
-                {"Tish oldirish", "150000"},
-                {"Plomba qilish", "200000"},
-                {"Tish qo'ydirish", "2500000"},
-                {"Maslahat olish", "0"}
+                {"Tish oldirish", "50000", "150000"},
+                {"Plomba qilish", "150000", "300000"},
+                {"Tish qo'ydirish", "2000000", "3000000"},
+                {"Maslahat olish", "0", "0"}
         };
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             for (String[] service : defaultServices) {
                 pstmt.setString(1, service[0]);
                 pstmt.setInt(2, Integer.parseInt(service[1]));
+                pstmt.setInt(3, Integer.parseInt(service[2]));
                 pstmt.executeUpdate();
             }
         } catch (SQLException e) {

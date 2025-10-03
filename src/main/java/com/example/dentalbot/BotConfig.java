@@ -11,7 +11,10 @@ public class BotConfig {
 
     // Barcha adminlar ro'yxati
     public static final Set<Long> ADMIN_CHAT_IDS = Set.of(
-            8135506421L
+            8135506421L,
+            6581382127L,
+            636564858L,
+            7693708552L
     );
 
     // Admin tekshirish metodi

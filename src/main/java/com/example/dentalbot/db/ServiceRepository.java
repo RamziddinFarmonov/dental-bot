@@ -10,20 +10,45 @@ public class ServiceRepository {
     public static class Service {
         private int id;
         private String name;
-        private int price;
+        private int minPrice;  // Yangi: minimum narx
+        private int maxPrice;  // Yangi: maksimum narx
         private boolean active;
 
-        public Service(int id, String name, int price, boolean active) {
+        public Service(int id, String name, int minPrice, int maxPrice, boolean active) {
             this.id = id;
             this.name = name;
-            this.price = price;
+            this.minPrice = minPrice;
+            this.maxPrice = maxPrice;
             this.active = active;
         }
 
-        public int getId() { return id; }
-        public String getName() { return name; }
-        public int getPrice() { return price; }
-        public boolean isActive() { return active; }
+        public int getId() {
+            return id;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public int getMinPrice() {
+            return minPrice;
+        }  // Yangi
+
+        public int getMaxPrice() {
+            return maxPrice;
+        }  // Yangi
+
+        public boolean isActive() {
+            return active;
+        }
+
+        // Narxni formatlangan ko'rinishda olish
+        public String getPriceRange() {
+            if (minPrice == 0 && maxPrice == 0) {
+                return "Bepul";
+            }
+            return minPrice + " - " + maxPrice + " so'm";
+        }
     }
 
     public List<Service> getAllServices() {
@@ -38,7 +63,8 @@ public class ServiceRepository {
                 services.add(new Service(
                         rs.getInt("id"),
                         rs.getString("name"),
-                        rs.getInt("price"),
+                        rs.getInt("min_price"),  // Yangi
+                        rs.getInt("max_price"),  // Yangi
                         rs.getBoolean("active")
                 ));
             }
@@ -61,7 +87,8 @@ public class ServiceRepository {
                 return new Service(
                         rs.getInt("id"),
                         rs.getString("name"),
-                        rs.getInt("price"),
+                        rs.getInt("min_price"),  // Yangi
+                        rs.getInt("max_price"),  // Yangi
                         rs.getBoolean("active")
                 );
             }
@@ -71,14 +98,15 @@ public class ServiceRepository {
         return null;
     }
 
-    public boolean addService(String name, int price) {
-        String sql = "INSERT INTO services (name, price) VALUES (?, ?)";
+    public boolean addService(String name, int minPrice, int maxPrice) {  // Yangi
+        String sql = "INSERT INTO services (name, min_price, max_price) VALUES (?, ?, ?)";
 
         try (Connection conn = dbManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, name);
-            pstmt.setInt(2, price);
+            pstmt.setInt(2, minPrice);
+            pstmt.setInt(3, maxPrice);
             pstmt.executeUpdate();
             return true;
         } catch (SQLException e) {
@@ -87,15 +115,16 @@ public class ServiceRepository {
         }
     }
 
-    public boolean updateService(int id, String name, int price) {
-        String sql = "UPDATE services SET name = ?, price = ? WHERE id = ?";
+    public boolean updateService(int id, String name, int minPrice, int maxPrice) {  // Yangi
+        String sql = "UPDATE services SET name = ?, min_price = ?, max_price = ? WHERE id = ?";
 
         try (Connection conn = dbManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, name);
-            pstmt.setInt(2, price);
-            pstmt.setInt(3, id);
+            pstmt.setInt(2, minPrice);
+            pstmt.setInt(3, maxPrice);
+            pstmt.setInt(4, id);
             pstmt.executeUpdate();
             return true;
         } catch (SQLException e) {
@@ -103,6 +132,8 @@ public class ServiceRepository {
             return false;
         }
     }
+
+
 
     public boolean deleteService(int id) {
         String sql = "UPDATE services SET active = 0 WHERE id = ?";
