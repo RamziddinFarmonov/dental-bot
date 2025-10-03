@@ -34,13 +34,33 @@ public class AppointmentRepository {
             this.appointmentTime = appointmentTime;
         }
 
-        public int getId() { return id; }
-        public long getChatId() { return chatId; }
-        public String getFullName() { return fullName; }
-        public String getPhone() { return phone; }
-        public int getServiceId() { return serviceId; }
-        public String getServiceName() { return serviceName; }
-        public String getAppointmentTime() { return appointmentTime; }
+        public int getId() {
+            return id;
+        }
+
+        public long getChatId() {
+            return chatId;
+        }
+
+        public String getFullName() {
+            return fullName;
+        }
+
+        public String getPhone() {
+            return phone;
+        }
+
+        public int getServiceId() {
+            return serviceId;
+        }
+
+        public String getServiceName() {
+            return serviceName;
+        }
+
+        public String getAppointmentTime() {
+            return appointmentTime;
+        }
     }
 
     public void saveAppointment(long chatId, String appointmentTime, String phone,
@@ -207,19 +227,19 @@ public class AppointmentRepository {
                 LocalDateTime twoHoursBefore = appointmentTime.minusHours(2);
                 LocalDateTime thirtyMinBefore = appointmentTime.minusMinutes(30);
 
-                // 1 kun oldin eslatma
-                if (!sent1Day && now.isAfter(oneDayBefore) && now.isBefore(appointmentTime)) {
+                // 1 kun oldin eslatma - FAQAT BIR MARTA
+                if (!sent1Day && now.isAfter(oneDayBefore) && now.isBefore(oneDayBefore.plusMinutes(30))) {
                     sendReminder(bot, chatId,
                             "⏰ Eslatma: Hurmatli " + fullName +
                                     ", sizning " + serviceName + " navbatingizga 1 kun qoldi." +
                                     "\n🕒 Sana: " + appointmentTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) +
-                                    "\n\n📍 Manzil: Toshkent shahar, Yunusobod tumani" +
-                                    "\n📞 Telefon: +998 90 123 45 67");
+                                    "\n\n📍 Manzil: Samarqand, Urgut tumani, Qora tepa" +
+                                    "\n📞 Telefon: +998 91 034 33 55");
                     updateReminderSent(id, "reminder_sent_1day", true);
                 }
 
-                // 2 soat oldin eslatma
-                if (!sent2Hours && now.isAfter(twoHoursBefore) && now.isBefore(appointmentTime)) {
+                // 2 soat oldin eslatma - FAQAT BIR MARTA
+                if (!sent2Hours && now.isAfter(twoHoursBefore) && now.isBefore(twoHoursBefore.plusMinutes(30))) {
                     sendReminder(bot, chatId,
                             "⏰ Eslatma: Hurmatli " + fullName +
                                     ", sizning " + serviceName + " navbatingizga 2 soat qoldi." +
@@ -227,8 +247,8 @@ public class AppointmentRepository {
                     updateReminderSent(id, "reminder_sent_2hours", true);
                 }
 
-                // 30 daqiqa oldin eslatma
-                if (!sent30Min && now.isAfter(thirtyMinBefore) && now.isBefore(appointmentTime)) {
+                // 30 daqiqa oldin eslatma - FAQAT BIR MARTA
+                if (!sent30Min && now.isAfter(thirtyMinBefore) && now.isBefore(thirtyMinBefore.plusMinutes(30))) {
                     sendReminder(bot, chatId,
                             "⏰ Eslatma: Hurmatli " + fullName +
                                     ", sizning " + serviceName + " navbatingizga 30 daqiqa qoldi." +
@@ -241,6 +261,8 @@ public class AppointmentRepository {
             e.printStackTrace();
         }
     }
+
+
     public String findNextAvailableTime(String preferredTime) {
         LocalDateTime preferred = LocalDateTime.parse(preferredTime,
                 DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
